@@ -54,6 +54,14 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
         log.info("Token $token updated in crypto_values table.")
     }
 
+    fun deleteTokenValue(token: String) {
+        val query = "delete from $TABLE_NAME where token = ?;"
+
+        val params = mapOf(1 to token)
+
+        executeUpdate(query, params)
+        log.info("Token $token deleted in crypto_values table.")
+    }
     /**
      * Retrieves the value of a crypto token in the table of crypto values.
      */

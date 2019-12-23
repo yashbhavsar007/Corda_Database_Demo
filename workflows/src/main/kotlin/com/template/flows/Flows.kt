@@ -45,6 +45,23 @@ class UpdateTokenValueFlow(private val token: String, private val value: Int) : 
     }
 }
 
+
+/**
+ * Deletes crypto token in the table of crypto values.
+ */
+@InitiatingFlow
+@StartableByRPC
+class DeleteTokenValueFlow(private val token: String) : FlowLogic<Unit>() {
+    override val progressTracker: ProgressTracker = ProgressTracker()
+
+    @Suspendable
+    override fun call() {
+        val databaseService = serviceHub.cordaService(CryptoValuesDatabaseService::class.java)
+        databaseService.deleteTokenValue(token)
+    }
+}
+
+
 /**
  * Retrieves the value of a crypto token in the table of crypto values.
  */
