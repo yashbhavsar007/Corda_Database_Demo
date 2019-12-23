@@ -35,7 +35,7 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
         }
         else
         {
-            throw IllegalArgumentException("Token $token already available database make sure a unique token name")
+            throw IllegalArgumentException("Token $token already available in database make sure a unique token name")
 
         }
 
@@ -46,12 +46,25 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
      * Updates the value of a crypto token in the table of crypto values.
      */
     fun updateTokenValue(token: String, value: Int) {
-        val query = "update $TABLE_NAME set value = ? where token = ?"
+        val query = "select value from $TABLE_NAME where token = ?"
 
-        val params = mapOf(1 to value, 2 to token)
+        val params = mapOf(1 to token)
 
-        executeUpdate(query, params)
-        log.info("Token $token updated in crypto_values table.")
+        val results = executeQuery(query, params) { it -> it.getInt("value") }
+
+        if (results.isEmpty()) {
+            throw IllegalArgumentException("Token $token not available in database")
+        }
+        else
+        {
+            val query = "update $TABLE_NAME set value = ? where token = ?"
+
+            val params = mapOf(1 to value, 2 to token)
+
+            executeUpdate(query, params)
+            log.info("Token $token updated in crypto_values table.")
+        }
+
     }
 
     fun deleteTokenValue(token: String) {
