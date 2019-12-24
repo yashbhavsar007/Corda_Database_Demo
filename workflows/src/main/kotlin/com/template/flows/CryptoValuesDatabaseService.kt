@@ -12,6 +12,7 @@ import net.corda.core.node.services.CordaService
 class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(services) {
     init {
         setUpStorage()
+        setUpStorage2()
     }
 
     /**
@@ -39,9 +40,59 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
 
         }
 
+    }
+
+    /**
+     * Adds a crypto token and associated value to the table of crypto values.
+     */
+    // Making addTokenValue unique for each token
+    fun addDatabaseValue(name: String, email: String) {
+        val query = "select email from $TABLE_NAME2 where name = ?"
+
+        val params = mapOf(1 to name)
+
+        val results = executeQuery(query, params) { it -> it.getString("email") }
+
+        if (results.isEmpty()) {
+            val query = "insert into $TABLE_NAME2 values(?, ?)"
+
+            val params = mapOf(1 to name, 2 to email)
+
+            executeUpdate(query, params)
+            log.info("Data $name added to crypto_values table.")
+        }
+        else
+        {
+            throw IllegalArgumentException("Data name $name already available in database make sure a unique name")
+
+        }
 
     }
 
+    /**
+     * Updates the value of a crypto token in the table of crypto values.
+     */
+    fun updateDatabaseValue(name: String, email: String) {
+        val query = "select email from $TABLE_NAME2 where name = ?"
+
+        val params = mapOf(1 to name)
+
+        val results = executeQuery(query, params) { it -> it.getString("email") }
+
+        if (results.isEmpty()) {
+            throw IllegalArgumentException("Data $name not available in database")
+        }
+        else
+        {
+            val query = "update $TABLE_NAME2 set email = ? where name = ?"
+
+            val params = mapOf(1 to email, 2 to name)
+
+            executeUpdate(query, params)
+            log.info("Data $name updated in user_data table.")
+        }
+
+    }
     /**
      * Updates the value of a crypto token in the table of crypto values.
      */
@@ -75,6 +126,19 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
         executeUpdate(query, params)
         log.info("Token $token deleted in crypto_values table.")
     }
+
+
+    fun deleteDatabaseValue(name: String) {
+        val query = "delete from $TABLE_NAME2 where name = ?;"
+
+        val params = mapOf(1 to name)
+
+        executeUpdate(query, params)
+        log.info("Data of  $name deleted in user_data table.")
+    }
+
+
+
     /**
      * Retrieves the value of a crypto token in the table of crypto values.
      */
@@ -95,6 +159,25 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
     }
 
     /**
+     * Retrieves the value of a crypto token in the table of crypto values.
+     */
+    fun queryDatabaseValue(name: String): String {
+        val query = "select email from $TABLE_NAME2 where name = ?"
+
+        val params = mapOf(1 to name)
+
+        val results = executeQuery(query, params) { it -> it.getString("email") }
+
+        if (results.isEmpty()) {
+            throw IllegalArgumentException("Name $name not present in database.")
+        }
+
+        val email = results.single()
+        log.info("Token $name read from crypto_values table.")
+        return email
+    }
+
+    /**
      * Initialises the table of crypto values.
      */
     private fun setUpStorage() {
@@ -106,5 +189,16 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
 
         executeUpdate(query, emptyMap())
         log.info("Created crypto_values table.")
+    }
+
+    private fun setUpStorage2() {
+        val query = """
+            create table if not exists $TABLE_NAME2(
+                name varchar(64),
+                email varchar(64)
+            )"""
+
+        executeUpdate(query, emptyMap())
+        log.info("Created $TABLE_NAME2 table.")
     }
 }
