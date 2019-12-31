@@ -2,6 +2,11 @@ package com.template.flows
 
 import net.corda.core.node.ServiceHub
 import net.corda.core.node.services.CordaService
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.util.*
+import kotlin.collections.ArrayList
+
 
 /**
  * A database service subclass for handling a table of crypto values.
@@ -12,58 +17,31 @@ import net.corda.core.node.services.CordaService
 class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(services) {
     init {
         setUpStorage()
-        setUpStorage2()
     }
+
 
     /**
      * Adds a crypto token and associated value to the table of crypto values.
      */
     // Making addTokenValue unique for each token
-    fun addTokenValue(token: String, value: Int) {
-        val query = "select value from $TABLE_NAME where token = ?"
+    fun addDatabaseValue(name: String, email: String, date: Long, contact: Int, country: String) {
+        val query = "select name from $TABLE_NAME2 where email = ?"
 
-        val params = mapOf(1 to token)
+        val params = mapOf(1 to email)
 
-        val results = executeQuery(query, params) { it -> it.getInt("value") }
+        val results = executeQuery(query, params) { it -> it.getString("name") }
 
         if (results.isEmpty()) {
-            val query = "insert into $TABLE_NAME values(?, ?)"
+            val query = "insert into $TABLE_NAME2 values(?, ?, ?, ?, ?)"
 
-            val params = mapOf(1 to token, 2 to value)
+            val params = mapOf(1 to name, 2 to email, 3 to date, 4 to contact, 5 to country)
 
             executeUpdate(query, params)
-            log.info("Token $token added to crypto_values table.")
+            log.info("Data $email added to crypto_values table.")
         }
         else
         {
-            throw IllegalArgumentException("Token $token already available in database make sure a unique token name")
-
-        }
-
-    }
-
-    /**
-     * Adds a crypto token and associated value to the table of crypto values.
-     */
-    // Making addTokenValue unique for each token
-    fun addDatabaseValue(name: String, email: String) {
-        val query = "select email from $TABLE_NAME2 where name = ?"
-
-        val params = mapOf(1 to name)
-
-        val results = executeQuery(query, params) { it -> it.getString("email") }
-
-        if (results.isEmpty()) {
-            val query = "insert into $TABLE_NAME2 values(?, ?)"
-
-            val params = mapOf(1 to name, 2 to email)
-
-            executeUpdate(query, params)
-            log.info("Data $name added to crypto_values table.")
-        }
-        else
-        {
-            throw IllegalArgumentException("Data name $name already available in database make sure a unique name")
+            throw IllegalArgumentException("Data email $email already available in database make sure a unique email id")
 
         }
 
@@ -93,41 +71,8 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
         }
 
     }
-    /**
-     * Updates the value of a crypto token in the table of crypto values.
-     */
-    fun updateTokenValue(token: String, value: Int) {
-        val query = "select value from $TABLE_NAME where token = ?"
 
-        val params = mapOf(1 to token)
-
-        val results = executeQuery(query, params) { it -> it.getInt("value") }
-
-        if (results.isEmpty()) {
-            throw IllegalArgumentException("Token $token not available in database")
-        }
-        else
-        {
-            val query = "update $TABLE_NAME set value = ? where token = ?"
-
-            val params = mapOf(1 to value, 2 to token)
-
-            executeUpdate(query, params)
-            log.info("Token $token updated in crypto_values table.")
-        }
-
-    }
-
-    fun deleteTokenValue(token: String) {
-        val query = "delete from $TABLE_NAME where token = ?;"
-
-        val params = mapOf(1 to token)
-
-        executeUpdate(query, params)
-        log.info("Token $token deleted in crypto_values table.")
-    }
-
-
+    // Deleting Data values from table
     fun deleteDatabaseValue(name: String) {
         val query = "delete from $TABLE_NAME2 where name = ?;"
 
@@ -137,65 +82,49 @@ class CryptoValuesDatabaseService(services: ServiceHub) : DatabaseService(servic
         log.info("Data of  $name deleted in user_data table.")
     }
 
-
-
+    @Throws(SQLException::class)
+    fun resultSetToArrayList(rs: ResultSet): List<Any?>{
+        val md = rs.metaData
+        val columns = md.columnCount
+        val list: ArrayList<Any?> = ArrayList<Any?>(50)
+        while (rs.next()) {
+            val row: HashMap<Any?, Any?> = HashMap<Any?, Any?>(columns)
+            for (i in 1..columns) {
+                row[md.getColumnName(i)] = rs.getObject(i)
+            }
+            list.add(row)
+        }
+        return list
+    }
     /**
      * Retrieves the value of a crypto token in the table of crypto values.
      */
-    fun queryTokenValue(token: String): Int {
-        val query = "select value from $TABLE_NAME where token = ?"
+    fun queryDatabaseValue(email: String): HashMap<Any?, Any?> {
+        val query = "select * from $TABLE_NAME2 where email = ?"
 
-        val params = mapOf(1 to token)
+        val params = mapOf(1 to email)
 
-        val results = executeQuery(query, params) { it -> it.getInt("value") }
-
-        if (results.isEmpty()) {
-            throw IllegalArgumentException("Token $token not present in database.")
-        }
-
-        val value = results.single()
-        log.info("Token $token read from crypto_values table.")
-        return value
+        val results = executeQuery2(query, params)
+//        val md = results.single()
+//      //  val columns = md
+//        //val res = resultSetToArrayList(results.single())
+//        if (results.isEmpty()) {
+//            throw IllegalArgumentException("Mail $email not present in database.")
+//        }
+//
+//        val name = results.single()
+        log.info("Mail $email read from crypto_values table.")
+        return results
     }
 
-    /**
-     * Retrieves the value of a crypto token in the table of crypto values.
-     */
-    fun queryDatabaseValue(name: String): String {
-        val query = "select email from $TABLE_NAME2 where name = ?"
-
-        val params = mapOf(1 to name)
-
-        val results = executeQuery(query, params) { it -> it.getString("email") }
-
-        if (results.isEmpty()) {
-            throw IllegalArgumentException("Name $name not present in database.")
-        }
-
-        val email = results.single()
-        log.info("Token $name read from crypto_values table.")
-        return email
-    }
-
-    /**
-     * Initialises the table of crypto values.
-     */
     private fun setUpStorage() {
-        val query = """
-            create table if not exists $TABLE_NAME(
-                token varchar(64),
-                value int
-            )"""
-
-        executeUpdate(query, emptyMap())
-        log.info("Created crypto_values table.")
-    }
-
-    private fun setUpStorage2() {
         val query = """
             create table if not exists $TABLE_NAME2(
                 name varchar(64),
-                email varchar(64)
+                email varchar(64),
+                date long,
+                contact integer,
+                country varchar(64)
             )"""
 
         executeUpdate(query, emptyMap())

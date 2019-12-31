@@ -7,6 +7,8 @@ import net.corda.core.utilities.loggerFor
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.util.ArrayList
+import java.util.HashMap
 
 /**
  * A generic database service superclass for handling for database update.
@@ -69,6 +71,41 @@ open class DatabaseService(private val services: ServiceHub) : SingletonSerializ
             preparedStatement.close()
         }
     }
+
+
+    protected fun executeQuery2(
+            query: String,
+            params: Map<Int, Any>): HashMap<Any?, Any?> {
+        val preparedStatement = prepareStatement(query, params)
+      //  val results = mutableListOf<T>()
+
+        return try {
+            //val re = mutableMapOf<Any?,Any?>()
+            val resultSet = preparedStatement.executeQuery()
+            val md = resultSet.metaData
+            val columns = md.columnCount
+            val list =  ArrayList<Any?>(50)
+            val row: HashMap<Any?, Any?> = HashMap<Any?, Any?>(columns)
+
+            while (resultSet.next()) {
+                for (i in 1..columns) {
+                    row[md.getColumnName(i)] = resultSet.getObject(i)
+                }
+
+
+            }
+//            while (resultSet.next()) {
+//                results.add(transformer(resultSet))
+//            }
+            row
+        } catch (e: SQLException) {
+            log.error(e.message)
+            throw e
+        } finally {
+            preparedStatement.close()
+        }
+    }
+
 
     /**
      * Creates a PreparedStatement - a precompiled SQL statement to be
